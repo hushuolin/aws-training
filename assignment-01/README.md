@@ -31,7 +31,7 @@ Save this as s3-bucket-template.json:
     }
 }
 ```
-> **Note:** Note: This basic template will be updated later as needed.
+> **Note:** This basic template will be updated later as needed.
 
 ### 4. Deploy the Stack
 ```

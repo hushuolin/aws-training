@@ -1,0 +1,59 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Resources": {
+      "MyLambdaExecutionRole": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "Policies": [
+            {
+              "PolicyName": "S3AccessPolicy",
+              "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "s3:GetObject",
+                      "s3:PutObject"
+                    ],
+                    "Resource": "arn:aws:s3:::s3-bucket-assignment-01/*"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "MyLambdaFunction": {
+        "Type": "AWS::Lambda::Function",
+        "Properties": {
+          "FunctionName": "MyS3ReadWriteFunction",
+          "Handler": "index.handler",
+          "Role": {
+            "Fn::GetAtt": [
+              "MyLambdaExecutionRole",
+              "Arn"
+            ]
+          },
+          "Runtime": "python3.8",
+          "Code": {
+            "ZipFile": "import boto3\ns3 = boto3.client('s3')\ndef handler(event, context):\n    bucket_name = 's3-bucket-assignment-01'\n    key = 'example-object.txt'\n    # Write an object to the S3 bucket\n    s3.put_object(Bucket=bucket_name, Key=key, Body='Hello from Lambda!')\n    # Read an object from the S3 bucket\n    response = s3.get_object(Bucket=bucket_name, Key=key)\n    data = response['Body'].read().decode('utf-8')\n    return {\n        'statusCode': 200,\n        'body': f'Data from S3: {data}'\n    }\n"
+          },
+          "Timeout": 60
+        }
+      }
+    }
+  }
+  

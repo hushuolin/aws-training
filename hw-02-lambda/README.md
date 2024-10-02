@@ -7,16 +7,19 @@ This assignment is to create a Lambda Function using CloudFormation and use this
    - Create an execution role
    - Create the lambda function
 
-The role and policies are defined in `lambda-s3-template.json`.
+> **Note**: The role and policies are defined in `lambda-s3-template.json`.
 
 **Deploy the CloudFormation Stack**
 
-   ```bash
-   aws cloudformation create-stack \
-       --stack-name lambda-s3-stack \
-       --template-body file://lambda-s3-template.json \
-       --capabilities CAPABILITY_IAM
    ```
+   aws cloudformation create-stack \
+    --stack-name lambda-s3-stack \
+    --template-body file://lambda-s3-template.json \
+    --parameters ParameterKey=BucketName,ParameterValue=s3-bucket-assignment-01 \
+    --capabilities CAPABILITY_IAM
+   ```
+
+> **Note**: Replace the ParameterValue with your destination bucket name
 
 
 **Test the Lambda Function**

@@ -72,13 +72,7 @@ Create a Python script (`send_mock_data.py`) to send mock data to the Kinesis st
 - **Verify that the Lambda function is triggered** when data is pushed to the Kinesis stream.
 - **Check the S3 bucket** to confirm that processed data is stored correctly in the format `data/<id>.json`.
 
-### Step 7: Verify Data in S3
-After running the Python script:
-
-1. **Check the S3 bucket** for the processed data.
-2. The data should be stored in JSON files with a key format like data/<id>.json.
-
-### Step 8: Monitor and Debug
+### Step 7: Monitor and Debug
 1. **Monitor CloudWatch Logs**: CloudWatch will capture logs from the Lambda function. Use these logs to ensure that the function is processing the data correctly.
 2. **Troubleshooting**:
 - If data is not appearing in S3, check the Lambda logs for any errors.

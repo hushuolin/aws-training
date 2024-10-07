@@ -37,8 +37,10 @@ Define key parameters:
 Use the AWS CLI to deploy the CloudFormation template. This will set up the Kinesis stream, Lambda function, and necessary IAM roles.
 
 ```bash
-aws cloudformation create-stack --stack-name KinesisLambdaS3Stack --template-body file://kinesis-lambda-s3-template.json --parameters ParameterKey=StreamName,ParameterValue=YourStreamName ParameterKey=BucketName,ParameterValue=YourBucketName
+aws cloudformation create-stack --stack-name KinesisLambdaS3Stack --template-body file://kinesis-lambda-s3-template.json --parameters ParameterKey=StreamName,ParameterValue=kinesis-stream-hw-03 ParameterKey=BucketName,ParameterValue=s3-bucket-assignment-01 --capabilities CAPABILITY_IAM
 ```
+> **Note**: `--capabilities CAPABILITY_IAM`: This flag tells AWS that you are aware the CloudFormation stack will create or modify IAM roles or policies.
+
 
 ### Step 4: Write the Python Script to Send Mock Data
 

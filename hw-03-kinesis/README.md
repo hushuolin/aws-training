@@ -60,3 +60,7 @@ Create a Python script (`send_mock_data.py`) to send mock data to the Kinesis st
 - **Check the S3 bucket** to confirm that processed data is stored correctly in the format `data/<id>.json`.
 
 ### Step 6: Monitoring and Logging
+Update the stack
+```
+aws cloudformation update-stack --stack-name KinesisLambdaS3Stack --template-body file://kinesis-lambda-s3-template.json --parameters ParameterKey=StreamName,ParameterValue=kinesis-stream-hw-03 ParameterKey=BucketName,ParameterValue=s3-bucket-assignment-01 --capabilities CAPABILITY_IAM
+```

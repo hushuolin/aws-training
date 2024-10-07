@@ -1,5 +1,7 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "CloudFormation template to create Kinesis Stream, Lambda function, and associated IAM roles for processing data and storing it in S3.",
+  
     "Parameters": {
       "StreamName": {
         "Type": "String",
@@ -13,8 +15,19 @@
       "BucketName": {
         "Type": "String",
         "Description": "S3 Bucket Name"
+      },
+      "LambdaMemorySize": {
+        "Type": "Number",
+        "Description": "Memory size for the Lambda function (in MB)",
+        "Default": 128
+      },
+      "LambdaTimeout": {
+        "Type": "Number",
+        "Description": "Timeout for the Lambda function (in seconds)",
+        "Default": 61
       }
     },
+  
     "Resources": {
       "KinesisStream": {
         "Type": "AWS::Kinesis::Stream",
@@ -23,6 +36,7 @@
           "ShardCount": { "Ref": "ShardCount" }
         }
       },
+  
       "LambdaExecutionRole": {
         "Type": "AWS::IAM::Role",
         "Properties": {
@@ -38,20 +52,34 @@
           },
           "Policies": [
             {
-              "PolicyName": "LambdaPolicy",
+              "PolicyName": "LambdaExecutionPolicy",
               "PolicyDocument": {
                 "Statement": [
                   {
                     "Effect": "Allow",
                     "Action": [
-                      "logs:*",
+                      "logs:CreateLogGroup",
+                      "logs:CreateLogStream",
+                      "logs:PutLogEvents"
+                    ],
+                    "Resource": "arn:aws:logs:*:*:*"
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": [
                       "kinesis:GetRecords",
                       "kinesis:GetShardIterator",
                       "kinesis:DescribeStream",
-                      "kinesis:ListStreams",
+                      "kinesis:ListStreams"
+                    ],
+                    "Resource": { "Fn::GetAtt": [ "KinesisStream", "Arn" ] }
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": [
                       "s3:PutObject"
                     ],
-                    "Resource": "*"
+                    "Resource": { "Fn::Sub": "arn:aws:s3:::${BucketName}/*" }
                   }
                 ]
               }
@@ -59,6 +87,7 @@
           ]
         }
       },
+  
       "KinesisLambdaFunction": {
         "Type": "AWS::Lambda::Function",
         "Properties": {
@@ -68,12 +97,14 @@
           "Handler": "index.lambda_handler",
           "Code": {
             "ZipFile": {
-              "Fn::Sub": "\nimport json\nimport base64\nimport boto3\ns3 = boto3.client('s3')\ndef lambda_handler(event, context):\n    for record in event['Records']:\n        payload = base64.b64decode(record['kinesis']['data']).decode('utf-8')\n        data = json.loads(payload)\n        bucket_name = '${BucketName}'\n        key = f\"data/{data['id']}.json\"\n        s3.put_object(Bucket=bucket_name, Key=key, Body=json.dumps(data))\n    return {'statusCode': 200, 'body': 'Success'}"
+              "Fn::Sub": "\nimport json\nimport base64\nimport boto3\ns3 = boto3.client('s3')\ndef lambda_handler(event, context):\n    for record in event['Records']:\n        try:\n            # Decode the Base64-encoded Kinesis data\n            payload = base64.b64decode(record['kinesis']['data']).decode('utf-8')\n            print(f'Decoded payload: {payload}')\n\n            # Convert the payload to JSON\n            data = json.loads(payload)\n            print(f'Data: {data}')\n\n            # Store the processed data in S3\n            bucket_name = '${BucketName}'\n            key = f\"data/{data['id']}.json\"\n            s3.put_object(Bucket=bucket_name, Key=key, Body=json.dumps(data))\n            print(f'Uploaded to S3: {bucket_name}/{key}')\n        except Exception as e:\n            print(f'Error processing record: {str(e)}')\n    return {'statusCode': 200, 'body': 'Success'}"
             }
           },
-          "Timeout": 60
+          "MemorySize": { "Ref": "LambdaMemorySize" },
+          "Timeout": { "Ref": "LambdaTimeout" }
         }
       },
+  
       "LambdaEventSourceMapping": {
         "Type": "AWS::Lambda::EventSourceMapping",
         "Properties": {
@@ -84,10 +115,15 @@
         }
       }
     },
+  
     "Outputs": {
       "KinesisStreamName": {
         "Description": "The name of the Kinesis stream",
         "Value": { "Ref": "StreamName" }
+      },
+      "LambdaFunctionName": {
+        "Description": "The name of the Lambda function",
+        "Value": { "Ref": "KinesisLambdaFunction" }
       }
     }
   }

@@ -1,0 +1,5 @@
+Step 1: Create DynamoDB Table
+aws cloudformation create-stack --stack-name KinesisStreamDynamoDBStack --template-body file://kinesis-dynamodb-template.json
+
+Step 2: Add Kinesis Stream and Lambda Function
+aws cloudformation update-stack --stack-name DynamoDBKinesisStack --template-body file://kinesis-lambda-template.json --capabilities CAPABILITY_IAM

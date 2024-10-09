@@ -57,6 +57,21 @@
             }
           ]
         }
+      },
+      "KinesisLambdaFunction": {
+        "Type": "AWS::Lambda::Function",
+        "Properties": {
+          "FunctionName": "KinesisProcessorLambda",
+          "Runtime": "python3.8",
+          "Role": { "Fn::GetAtt": [ "LambdaExecutionRole", "Arn" ] },
+          "Handler": "index.lambda_handler",
+          "Code": {
+            "ZipFile": {
+              "Fn::Sub": "\nimport json\nimport base64\nimport boto3\n\ndynamodb = boto3.resource('dynamodb')\ntable = dynamodb.Table('KinesisDataTable')\n\ndef lambda_handler(event, context):\n    for record in event['Records']:\n        try:\n            payload = base64.b64decode(record['kinesis']['data']).decode('utf-8')\n            data = json.loads(payload)\n            table.put_item(Item={ 'id': str(data['id']), 'message': data['message'], 'timestamp': str(data['timestamp'])})\n            print(f\"Data inserted into DynamoDB: {data}\")\n        except Exception as e:\n            print(f\"Error processing record: {str(e)}\")\n    return {'statusCode': 200, 'body': 'Success'}"
+            }
+          },
+          "Timeout": 60
+        }
       }
     }
   }

@@ -72,6 +72,15 @@
           },
           "Timeout": 60
         }
+      },
+      "KinesisEventSourceMapping": {
+        "Type": "AWS::Lambda::EventSourceMapping",
+        "Properties": {
+          "BatchSize": 100,
+          "EventSourceArn": { "Fn::GetAtt": [ "KinesisStream", "Arn" ] },
+          "FunctionName": { "Ref": "KinesisLambdaFunction" },
+          "StartingPosition": "TRIM_HORIZON"
+        }
       }
     }
   }

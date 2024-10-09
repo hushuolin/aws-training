@@ -39,21 +39,40 @@
           },
           "Policies": [
             {
-              "PolicyName": "LambdaDynamoDBPolicy",
+              "PolicyName": "LambdaDynamoDBAndKinesisPolicy",
               "PolicyDocument": {
                 "Statement": [
                   {
                     "Effect": "Allow",
                     "Action": [
-                      "dynamodb:PutItem",
+                      "dynamodb:GetRecords",
+                      "dynamodb:GetShardIterator",
+                      "dynamodb:DescribeStream",
+                      "dynamodb:ListStreams",
+                      "dynamodb:PutItem"
+                    ],
+                    "Resource": [
+                      { "Fn::GetAtt": [ "DynamoDBTable", "Arn" ] },
+                      { "Fn::GetAtt": [ "DynamoDBTable", "StreamArn" ] }
+                    ]
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": [
                       "kinesis:GetRecords",
                       "kinesis:GetShardIterator",
-                      "kinesis:DescribeStream",
+                      "kinesis:DescribeStream"
+                    ],
+                    "Resource": { "Fn::GetAtt": [ "KinesisStream", "Arn" ] }
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": [
                       "logs:CreateLogGroup",
                       "logs:CreateLogStream",
                       "logs:PutLogEvents"
                     ],
-                    "Resource": "*"
+                    "Resource": "arn:aws:logs:*:*:*"
                   }
                 ]
               }
@@ -82,6 +101,30 @@
           "BatchSize": 100,
           "EventSourceArn": { "Fn::GetAtt": [ "KinesisStream", "Arn" ] },
           "FunctionName": { "Ref": "KinesisLambdaFunction" },
+          "StartingPosition": "TRIM_HORIZON"
+        }
+      },
+      "DynamoDBStreamLambdaFunction": {
+        "Type": "AWS::Lambda::Function",
+        "Properties": {
+          "FunctionName": "DynamoDBStreamProcessorLambda",
+          "Runtime": "python3.8",
+          "Role": { "Fn::GetAtt": [ "LambdaExecutionRole", "Arn" ] },
+          "Handler": "index.lambda_handler",
+          "Code": {
+            "ZipFile": {
+              "Fn::Sub": "\nimport json\nimport boto3\n\nses = boto3.client('ses')\n\ndef lambda_handler(event, context):\n    for record in event['Records']:\n        event_name = record['eventName']\n        if event_name == 'MODIFY' or event_name == 'REMOVE':\n            email_subject = f\"DynamoDB {event_name} Event\"\n            email_body = f\"A {event_name} event occurred in DynamoDB: {json.dumps(record)}\"\n            ses.send_email(\n                Source='your-verified-email@example.com',\n                Destination={'ToAddresses': ['your-verified-email@example.com']},\n                Message={\n                    'Subject': {'Data': email_subject},\n                    'Body': {'Text': {'Data': email_body}}\n                }\n            )\n            print(f\"{event_name} event detected and email sent.\")\n    return {'statusCode': 200, 'body': 'Email sent.'}"
+            }
+          },
+          "Timeout": 60
+        }
+      },
+      "DynamoDBStreamEventSourceMapping": {
+        "Type": "AWS::Lambda::EventSourceMapping",
+        "Properties": {
+          "BatchSize": 100,
+          "EventSourceArn": { "Fn::GetAtt": [ "DynamoDBTable", "StreamArn" ] },
+          "FunctionName": { "Ref": "DynamoDBStreamLambdaFunction" },
           "StartingPosition": "TRIM_HORIZON"
         }
       }

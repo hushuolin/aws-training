@@ -73,7 +73,12 @@
                       "logs:PutLogEvents"
                     ],
                     "Resource": "arn:aws:logs:*:*:*"
-                  }
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": "ses:SendEmail",
+                    "Resource": "*"
+                }
                 ]
               }
             }
@@ -113,7 +118,7 @@
           "Handler": "index.lambda_handler",
           "Code": {
             "ZipFile": {
-              "Fn::Sub": "\nimport json\nimport boto3\n\nses = boto3.client('ses')\n\ndef lambda_handler(event, context):\n    for record in event['Records']:\n        event_name = record['eventName']\n        if event_name == 'MODIFY' or event_name == 'REMOVE':\n            email_subject = f\"DynamoDB {event_name} Event\"\n            email_body = f\"A {event_name} event occurred in DynamoDB: {json.dumps(record)}\"\n            ses.send_email(\n                Source='your-verified-email@example.com',\n                Destination={'ToAddresses': ['your-verified-email@example.com']},\n                Message={\n                    'Subject': {'Data': email_subject},\n                    'Body': {'Text': {'Data': email_body}}\n                }\n            )\n            print(f\"{event_name} event detected and email sent.\")\n    return {'statusCode': 200, 'body': 'Email sent.'}"
+              "Fn::Sub": "\nimport json\nimport boto3\n\nses = boto3.client('ses')\n\ndef lambda_handler(event, context):\n    for record in event['Records']:\n        event_name = record['eventName']\n        if event_name == 'MODIFY' or event_name == 'REMOVE':\n            email_subject = f\"DynamoDB {event_name} Event\"\n            email_body = f\"A {event_name} event occurred in DynamoDB: {json.dumps(record)}\"\n            ses.send_email(\n                Source='shuolin96@gmail.com',\n                Destination={'ToAddresses': ['shuolin96@gmail.com']},\n                Message={\n                    'Subject': {'Data': email_subject},\n                    'Body': {'Text': {'Data': email_body}}\n                }\n            )\n            print(f\"{event_name} event detected and email sent.\")\n    return {'statusCode': 200, 'body': 'Email sent.'}"
             }
           },
           "Timeout": 60

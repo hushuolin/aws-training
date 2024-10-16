@@ -1,0 +1,13 @@
+Step 1: Create DynamoDB Table
+aws cloudformation create-stack --stack-name hw-04-dynamodb-stack --template-body file://kinesis-dynamodb-template.json
+
+Step 2: Add Kinesis Stream and Lambda Function
+aws cloudformation update-stack --stack-name KinesisStreamDynamoDBStack --template-body file://kinesis-dynamodb-template.json --capabilities CAPABILITY_IAM
+
+Test send email through SES cli
+aws ses send-email \
+    --from "shuolin96@gmail.com" \
+    --destination "ToAddresses=hu.shuo@northeastern.edu" \
+    --message file://email.json \
+    --region us-east-1
+

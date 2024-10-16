@@ -1,0 +1,12 @@
+{
+  "Subject": {
+    "Data": "Test Email from AWS SES",
+    "Charset": "UTF-8"
+  },
+  "Body": {
+    "Text": {
+      "Data": "Hello Shuolin,\n\nThis is a test email sent using AWS SES via the AWS CLI.\n\nBest regards,\nYour Name",
+      "Charset": "UTF-8"
+    }
+  }
+}

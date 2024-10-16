@@ -1,0 +1,20 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Resources": {
+      "MySQSQueue": {
+        "Type": "AWS::SQS::Queue"
+      },
+      "MySNSTopic": {
+        "Type": "AWS::SNS::Topic"
+      },
+      "MySQSSubscription": {
+        "Type": "AWS::SNS::Subscription",
+        "Properties": {
+          "TopicArn": { "Ref": "MySNSTopic" },
+          "Endpoint": { "Fn::GetAtt": ["MySQSQueue", "Arn"] },
+          "Protocol": "sqs"
+        }
+      }
+    }
+  }
+  

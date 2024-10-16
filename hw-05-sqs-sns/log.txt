@@ -16,3 +16,11 @@ Key Points:
 - SMTP Configuration: The Lambda function uses Python's smtplib to send emails. Ensure that you replace smtp.yourserver.com, your_email@example.com, and your_password with actual SMTP server details.
 - IAM Role: The Lambda function is given permissions to log its activities, interact with SQS, and publish to SNS.
 - Lambda Trigger: The trigger ensures that the Lambda function is invoked whenever a message is received in the SQS queue.
+
+Step 3: Test Lambda Function with hard code of Email Configuration
+
+1. Get smtp credentials from ses by create an IAM user ses-smtp-user
+2. Test Lambda code by running python smtp_sender.py locally
+2. Updated Lambda Function
+
+Step 3: Secure SMTP Credentials

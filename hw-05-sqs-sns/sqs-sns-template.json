@@ -62,7 +62,15 @@
                       "sns:Publish"
                     ],
                     "Resource": "*"
-                  }
+                  },
+                  {
+                    "Action": [
+                        "ses:SendEmail",
+                        "ses:SendRawEmail"
+                    ],
+                    "Resource": "*",
+                    "Effect": "Allow"
+                }
                 ]
               }
             }

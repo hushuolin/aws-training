@@ -2,7 +2,10 @@
     "AWSTemplateFormatVersion": "2010-09-09",
     "Resources": {
       "MySQSQueue": {
-        "Type": "AWS::SQS::Queue"
+        "Type": "AWS::SQS::Queue",
+        "Properties": {
+            "VisibilityTimeout": 90
+          }
       },
       "MySNSTopic": {
         "Type": "AWS::SNS::Topic"

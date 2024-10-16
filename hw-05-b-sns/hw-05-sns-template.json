@@ -1,106 +1,158 @@
 {
-    "AWSTemplateFormatVersion": "2010-09-09",
-    "Resources": {
-      "MySQSQueue": {
-        "Type": "AWS::SQS::Queue",
-        "Properties": {
-          "VisibilityTimeout": 60
+  "Resources": {
+    "SQSTriggerQueue": {
+      "Type": "AWS::SQS::Queue",
+      "Properties": {
+        "QueueName": "SQSTriggerQueue"
+      }
+    },
+    "SNSMessageTopic": {
+      "Type": "AWS::SNS::Topic",
+      "Properties": {
+        "TopicName": "SNSMessageTopic"
+      }
+    },
+    "SQSSubscription": {
+      "Type": "AWS::SNS::Subscription",
+      "Properties": {
+        "Protocol": "sqs",
+        "Endpoint": {
+          "Fn::GetAtt": [
+            "SQSTriggerQueue",
+            "Arn"
+          ]
+        },
+        "TopicArn": {
+          "Ref": "SNSMessageTopic"
         }
-      },
-      "MySNSTopic": {
-        "Type": "AWS::SNS::Topic"
-      },
-      "MySQSSubscription": {
-        "Type": "AWS::SNS::Subscription",
-        "Properties": {
-          "TopicArn": { "Ref": "MySNSTopic" },
-          "Endpoint": { "Fn::GetAtt": ["MySQSQueue", "Arn"] },
-          "Protocol": "sqs"
-        }
-      },
-      "EmailNotificationTopic": {
-        "Type": "AWS::SNS::Topic",
-        "Properties": {
-          "DisplayName": "EmailNotificationTopic"
-        }
-      },
-      "LambdaExecutionRole": {
-        "Type": "AWS::IAM::Role",
-        "Properties": {
-          "AssumeRolePolicyDocument": {
-            "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Effect": "Allow",
-                "Principal": {
-                  "Service": "lambda.amazonaws.com"
-                },
-                "Action": "sts:AssumeRole"
-              }
-            ]
-          },
-          "Policies": [
+      }
+    },
+    "LambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "LambdaExecutionRole",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
             {
-              "PolicyName": "LambdaSQSAndSNSPolicy",
-              "PolicyDocument": {
-                "Statement": [
-                  {
-                    "Effect": "Allow",
-                    "Action": [
-                      "logs:CreateLogGroup",
-                      "logs:CreateLogStream",
-                      "logs:PutLogEvents"
-                    ],
-                    "Resource": "*"
-                  },
-                  {
-                    "Effect": "Allow",
-                    "Action": [
-                      "sqs:ReceiveMessage",
-                      "sqs:DeleteMessage",
-                      "sqs:GetQueueAttributes"
-                    ],
-                    "Resource": {
-                      "Fn::GetAtt": ["MySQSQueue", "Arn"]
-                    }
-                  },
-                  {
-                    "Effect": "Allow",
-                    "Action": [
-                      "sns:Publish"
-                    ],
-                    "Resource": "*"
-                  }
-                ]
-              }
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
             }
           ]
-        }
-      },
-      "MyLambdaFunction": {
-        "Type": "AWS::Lambda::Function",
-        "Properties": {
-          "FunctionName": "SQSToSNSLambda",
-          "Runtime": "python3.8",
-          "Role": { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
-          "Handler": "lambda_function.lambda_handler",
-          "Code": {
-            "ZipFile": {
-              "Fn::Sub": "\nimport json\nimport boto3\n\nsns_client = boto3.client('sns')\n\ndef lambda_handler(event, context):\n    # Log the received event\n    print(f'Event received: {json.dumps(event)}')\n\n    # Prepare a message to publish to the second SNS topic\n    message = 'Message received from SQS and SNS triggered Lambda, sending email via SNS'\n\n    try:\n        # Publish message to the second SNS topic\n        response = sns_client.publish(\n            TopicArn='${EmailNotificationTopic}',\n            Message=message,\n            Subject='Notification from Lambda via SNS'\n        )\n        print('Message sent to EmailNotificationTopic')\n    except Exception as e:\n        print(f'Error sending message: {str(e)}')\n\n    return {'statusCode': 200, 'body': 'Message sent successfully.'}"
+        },
+        "Policies": [
+          {
+            "PolicyName": "LambdaPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "sns:Publish",
+                    "logs:*",
+                    "sqs:ReceiveMessage",
+                    "sqs:DeleteMessage",
+                    "sqs:GetQueueAttributes"
+                  ],
+                  "Resource": "*"
+                }
+              ]
             }
-          },
-          "Timeout": 60
+          }
+        ]
+      }
+    },
+    "LambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": "LambdaFunction",
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "LambdaExecutionRole",
+            "Arn"
+          ]
+        },
+        "Code": {
+          "ZipFile": {
+            "Fn::Join": [
+              "\n",
+              [
+                "import json",
+                "import boto3",
+                "",
+                "def handler(event, context):",
+                "    sns_client = boto3.client('sns')",
+                "    response = sns_client.publish(",
+                "        TopicArn='REPLACE_WITH_EMAIL_NOTIFICATION_TOPIC_ARN',",
+                "        Message='This is a notification message from Lambda',",
+                "        Subject='Lambda Notification'",
+                "    )",
+                "    return {",
+                "        'statusCode': 200,",
+                "        'body': json.dumps('Message sent!')",
+                "    }"
+              ]
+            ]
+          }
+        },
+        "Runtime": "python3.8"
+      }
+    },
+    "SNSLambdaTopic": {
+      "Type": "AWS::SNS::Topic",
+      "Properties": {
+        "TopicName": "SNSLambdaTopic"
+      }
+    },
+    "SNSLambdaSubscription": {
+      "Type": "AWS::SNS::Subscription",
+      "Properties": {
+        "Protocol": "lambda",
+        "Endpoint": {
+          "Fn::GetAtt": [
+            "LambdaFunction",
+            "Arn"
+          ]
+        },
+        "TopicArn": {
+          "Ref": "SNSMessageTopic"
         }
-      },
-      "SQSQueueLambdaTrigger": {
-        "Type": "AWS::Lambda::EventSourceMapping",
-        "Properties": {
-          "BatchSize": 10,
-          "EventSourceArn": { "Fn::GetAtt": ["MySQSQueue", "Arn"] },
-          "FunctionName": { "Ref": "MyLambdaFunction" },
-          "Enabled": true
+      }
+    },
+    "LambdaPermissionForSNS": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "LambdaFunction"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "sns.amazonaws.com",
+        "SourceArn": {
+          "Ref": "SNSMessageTopic"
+        }
+      }
+    },
+    "EmailNotificationTopic": {
+      "Type": "AWS::SNS::Topic",
+      "Properties": {
+        "TopicName": "EmailNotificationTopic"
+      }
+    },
+    "EmailSubscription": {
+      "Type": "AWS::SNS::Subscription",
+      "Properties": {
+        "Protocol": "email",
+        "Endpoint": "hu.shuo@northeastern.edu", 
+        "TopicArn": {
+          "Ref": "EmailNotificationTopic"
         }
       }
     }
+    
   }
-  
+}

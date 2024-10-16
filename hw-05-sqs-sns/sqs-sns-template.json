@@ -65,6 +65,30 @@
             }
           ]
         }
+      },
+      "MyLambdaFunction": {
+        "Type": "AWS::Lambda::Function",
+        "Properties": {
+          "FunctionName": "SQSToSMTPFunction",
+          "Runtime": "python3.8",
+          "Role": { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
+          "Handler": "index.lambda_handler",
+          "Code": {
+            "ZipFile": {
+              "Fn::Sub": "\nimport smtplib\nfrom email.mime.text import MIMEText\n\ndef lambda_handler(event, context):\n    smtp_server = 'smtp.yourserver.com'\n    smtp_port = 587\n    smtp_user = 'your_email@example.com'\n    smtp_password = 'your_password'\n\n    msg = MIMEText('Test message from Lambda')\n    msg['Subject'] = 'SQS-SNS triggered email'\n    msg['From'] = smtp_user\n    msg['To'] = 'recipient@example.com'\n\n    with smtplib.SMTP(smtp_server, smtp_port) as server:\n        server.starttls()\n        server.login(smtp_user, smtp_password)\n        server.sendmail(smtp_user, ['recipient@example.com'], msg.as_string())\n    return {'statusCode': 200, 'body': 'Email sent successfully.'}"
+            }
+          },
+          "Timeout": 60
+        }
+      },
+      "SQSQueueLambdaTrigger": {
+        "Type": "AWS::Lambda::EventSourceMapping",
+        "Properties": {
+          "BatchSize": 10,
+          "EventSourceArn": { "Fn::GetAtt": ["MySQSQueue", "Arn"] },
+          "FunctionName": { "Ref": "MyLambdaFunction" },
+          "Enabled": true
+        }
       }
     }
   }

@@ -1,0 +1,51 @@
+Overview of the Workflow:
+
+Message is published to the MessagePublishTopic SNS topic.
+Message is delivered to the MessageProcessingQueue SQS queue.
+Lambda function is triggered by the SQS message.
+Lambda function processes the SQS message and publishes it to the EmailNotificationTopic SNS topic.
+Email is sent via the SNS topic to your subscribed email (hu.shuo@northeastern.edu).
+
+Step 1: Create CloudFormation
+
+Step 2: Deploy the Lambda Function
+aws cloudformation create-stack --stack-name hw-05-sns-send-emails-stack --template-body file://hw-05-sns-send-emails-template.json --capabilities CAPABILITY_IAM
+
+aws cloudformation update-stack --stack-name hw-05-sns-send-emails-stack --template-body file://hw-05-sns-send-emails-template.json --capabilities CAPABILITY_IAM
+
+Step 3: Add an Email to SNS Topic
+Confirm Subscription through email
+
+Step 4: Test SQS can Trigger Lambda to send Emial via SNS Topic
+SQSTestEvent
+{
+  "Records": [
+    {
+      "messageId": "1d746dc7-9fe8-4dcd-9d0e-e6b1d7b7bb37",
+      "receiptHandle": "AQEBwJnKyrHigUMZj6rM02Lk6ll7+3JZXz==",
+      "body": "This is a test message from SQS",
+      "attributes": {
+        "ApproximateReceiveCount": "1",
+        "SentTimestamp": "1620041744975",
+        "SenderId": "123456789012",
+        "ApproximateFirstReceiveTimestamp": "1620041744985"
+      },
+      "messageAttributes": {},
+      "md5OfBody": "098f6bcd4621d373cade4e832627b4f6",
+      "eventSource": "aws:sqs",
+      "eventSourceARN": "arn:aws:sqs:us-east-1:123456789012:MessageProcessingQueue",
+      "awsRegion": "us-east-1"
+    }
+  ]
+}
+
+Step 5: Test SNS pulish message to SQS
+
+1: Trigger the Workflow by Publishing to the MessagePublishTopic
+Publish a Test Message:
+Click Publish message.
+In the Subject field, add something like Test Message to SQS.
+In the Message body, add your test message, for example: This is a test message to trigger SQS and Lambda workflow.
+Click Publish message.
+
+2. MessageProcessingQueuePolicy missed, attach permission to allow SNS publish message sent to SQS

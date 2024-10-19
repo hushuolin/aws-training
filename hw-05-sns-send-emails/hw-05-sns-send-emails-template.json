@@ -1,0 +1,154 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Resources": {
+    "MessagePublishTopic": {
+      "Type": "AWS::SNS::Topic",
+      "Properties": {
+        "TopicName": "MessagePublishTopic"
+      }
+    },
+    "EmailNotificationTopic": {
+      "Type": "AWS::SNS::Topic",
+      "Properties": {
+        "TopicName": "EmailNotificationTopic"
+      }
+    },
+    "MessageProcessingQueue": {
+      "Type": "AWS::SQS::Queue",
+      "Properties": {
+        "VisibilityTimeout": 60
+      }
+    },
+    "MessageProcessingQueuePolicy": {
+      "Type": "AWS::SQS::QueuePolicy",
+      "Properties": {
+        "Queues": [
+          { "Ref": "MessageProcessingQueue" }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": "*",
+              "Action": "sqs:SendMessage",
+              "Resource": { "Fn::GetAtt": ["MessageProcessingQueue", "Arn"] },
+              "Condition": {
+                "ArnEquals": {
+                  "aws:SourceArn": { "Ref": "MessagePublishTopic" }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "SNSQueueSubscription": {
+      "Type": "AWS::SNS::Subscription",
+      "Properties": {
+        "TopicArn": { "Ref": "MessagePublishTopic" },
+        "Endpoint": { "Fn::GetAtt": ["MessageProcessingQueue", "Arn"] },
+        "Protocol": "sqs"
+      }
+    },
+    "LambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "LambdaSQSSNSAccessPolicy",
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "sqs:ReceiveMessage",
+                    "sqs:DeleteMessage",
+                    "sqs:GetQueueAttributes"
+                  ],
+                  "Resource": { "Fn::GetAtt": ["MessageProcessingQueue", "Arn"] }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "sns:Publish",
+                  "Resource": { "Ref": "EmailNotificationTopic" }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "ProcessSQSMessagesLambda": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": "ProcessSQSMessagesLambda",
+        "Runtime": "python3.8",
+        "Role": { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
+        "Handler": "index.lambda_handler",
+        "Code": {
+          "ZipFile": {
+            "Fn::Sub": "\nimport json\nimport boto3\n\ndef lambda_handler(event, context):\n    sns = boto3.client('sns')\n    sns_topic_arn = '${EmailNotificationTopic}'\n    for record in event['Records']:\n        message = record['body']\n        email_message = f\"Processed message: {message}\"\n        sns.publish(TopicArn=sns_topic_arn, Message=email_message)\n        print(f'Message sent to EmailNotificationTopic: {email_message}')\n    return {'statusCode': 200, 'body': 'Messages processed and emails sent successfully.'}"
+          }
+        },
+        "Timeout": 60
+      }
+    },
+    "QueueToLambdaTrigger": {
+      "Type": "AWS::Lambda::EventSourceMapping",
+      "Properties": {
+        "BatchSize": 10,
+        "EventSourceArn": { "Fn::GetAtt": ["MessageProcessingQueue", "Arn"] },
+        "FunctionName": { "Ref": "ProcessSQSMessagesLambda" },
+        "Enabled": true
+      }
+    },
+    "EmailSubscription": {
+      "Type": "AWS::SNS::Subscription",
+      "Properties": {
+        "TopicArn": { "Ref": "EmailNotificationTopic" },
+        "Protocol": "email",
+        "Endpoint": "hu.shuo@northeastern.edu"
+      }
+    }
+  },
+  "Outputs": {
+    "MessagePublishTopicARN": {
+      "Description": "ARN of the Message Publish SNS Topic",
+      "Value": { "Ref": "MessagePublishTopic" }
+    },
+    "EmailNotificationTopicARN": {
+      "Description": "ARN of the Email Notification SNS Topic",
+      "Value": { "Ref": "EmailNotificationTopic" }
+    },
+    "MessageProcessingQueueARN": {
+      "Description": "ARN of the Message Processing SQS Queue",
+      "Value": { "Fn::GetAtt": ["MessageProcessingQueue", "Arn"] }
+    },
+    "LambdaFunctionName": {
+      "Description": "Name of the Lambda function that processes SQS messages",
+      "Value": { "Ref": "ProcessSQSMessagesLambda" }
+    }
+  }
+}
